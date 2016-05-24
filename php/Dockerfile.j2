@@ -1,0 +1,76 @@
+{# Variables: php_version, src_dir, packages, php_extensions, pecl_packages, php_ini_configs, php_fpm_configs -#}
+FROM php:{{ php_version }}-fpm
+
+# Install packages
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        {% for package in packages -%}
+        {{ package }} \
+        {% endfor -%}
+    && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+{% if pre_ext_install != '' %}
+RUN {{ pre_ext_install }}
+{% endif %}
+
+# Configure php & php-fpm
+ENV PHP_INI /usr/local/etc/php/php.ini
+ENV PHP_FPM /usr/local/etc/php-fpm.conf
+
+{% if php_extensions != [] -%}
+# Install custom php extensions
+RUN docker-php-ext-install {{ php_extensions|join(' ') }}
+{% endif %}
+
+{% if pecl_packages != [] -%}
+# Install pecl packages
+RUN pecl config-set php_ini ${PHP_INI}
+RUN yes | pecl install {{ pecl_packages|join(' ') }}
+{% endif %}
+
+{% if php_ini_configs != [] -%}
+RUN echo "" >> ${PHP_INI} && \
+    {% for parameter in php_ini_configs %}
+    echo "{{ parameter }}" >> ${PHP_INI} {% if not loop.last %} && \{% endif %}
+    {% endfor %}
+{%- endif %}
+{%- if php_fpm_configs != [] -%}
+RUN echo "" >> ${PHP_FPM} \
+    {% for parameter in php_fpm_configs %}
+    echo "{{ parameter }}" >> ${PHP_FPM} {% if not loop.last %} && \{% endif %}
+    {% endfor %}
+{%- endif %}
+
+# Create the source directory and set it as the working directory
+ENV SRC_DIR {{ src_dir }}
+RUN mkdir -p ${SRC_DIR}
+WORKDIR ${SRC_DIR}
+
+# Install dependencies
+COPY ./composer.* ${SRC_DIR}
+RUN php -d memory_limit=-1 /usr/local/bin/composer global require --prefer-dist hirak/prestissimo && \
+    php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --prefer-dist --no-scripts && \
+    rm -rf ~/.composer
+
+{% if enable_xdebug %}
+RUN pecl install xdebug && \
+    echo "zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20131226/xdebug.so" >> ${PHP_INI} && \
+    echo "xdebug.remote_enable=1" >> ${PHP_INI} && \
+    echo "xdebug.remote_connect_back=1" >> ${PHP_INI}
+{% endif %}
+
+# Copy source code
+COPY . ${SRC_DIR}
+
+# Copy default parameters file
+RUN cp app/config/parameters.yml.dist app/config/parameters.yml
+
+# In order to avoid permission issues
+RUN chown -R www-data:www-data ${SRC_DIR}
+
+# Should always be the last !
+VOLUME ${SRC_DIR}
