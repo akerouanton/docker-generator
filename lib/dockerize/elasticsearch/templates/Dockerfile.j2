@@ -1,0 +1,6 @@
+FROM elasticsearch:{{ version }}
+
+{% if plugins != [] %}
+RUN {% for plugin in plugins %}/usr/share/elasticsearch/bin/plugin install {{ plugin }} {% if not loop.last %}&& \{% endif %}
+  {% endfor %}
+{% endif %}

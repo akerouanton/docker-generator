@@ -1,0 +1,15 @@
+FROM rabbitmq:{{ version }}
+
+{% if plugins != [] %}
+RUN rabbitmq-plugins enable \{% for plugin in plugins %}
+      {{ plugin }} {% if not loop.last %}\{% endif %}
+{% endfor %}
+{% endif %}
+{% if tracing_directory %}
+RUN mkdir {{ tracing_directory }} \
+  && chown -R rabbitmq:rabbitmq {{ tracing_directory }}
+{% endif %}
+
+COPY {{ config_file }} /etc/rabbitmq/rabbitmq.config
+
+VOLUME /var/log/rabbitmq/tracing

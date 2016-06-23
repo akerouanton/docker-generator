@@ -1,5 +1,10 @@
-{# Variables: php_version, src_dir, packages, php_extensions, pecl_packages, php_ini_configs, php_fpm_configs -#}
 FROM php:{{ php_version }}-fpm
+
+# -- Extra steps: pre_apt -- #
+{% for step in extra_steps['pre_apt'] -%}
+RUN {{ step }}
+{% endfor %}
+# -- Extra steps: pre_apt -- #
 
 # Install packages
 RUN apt-get update && \
@@ -13,24 +18,32 @@ RUN apt-get update && \
 # Install composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-{% if pre_ext_install != '' %}
-RUN {{ pre_ext_install }}
-{% endif %}
-
 # Configure php & php-fpm
 ENV PHP_INI /usr/local/etc/php/php.ini
 ENV PHP_FPM /usr/local/etc/php-fpm.conf
+
+# -- Extra steps: pre_exts -- #
+{% for step in extra_steps['pre_exts'] -%}
+RUN {{ step }}
+{% endfor %}
+# -- Extra steps: pre_exts -- #
 
 {% if php_extensions != [] -%}
 # Install custom php extensions
 RUN docker-php-ext-install {{ php_extensions|join(' ') }}
 {% endif %}
 
-{% if pecl_packages != [] -%}
+{% if pecl_extensions != [] -%}
 # Install pecl packages
 RUN pecl config-set php_ini ${PHP_INI}
-RUN yes | pecl install {{ pecl_packages|join(' ') }}
+RUN yes | pecl install {{ pecl_extensions|join(' ') }}
 {% endif %}
+
+# -- Extra steps: pre_config -- #
+{% for step in extra_steps['pre_config'] -%}
+RUN {{ step }}
+{% endfor %}
+# -- Extra steps: pre_config -- #
 
 {% if php_ini_configs != [] -%}
 RUN echo "" >> ${PHP_INI} && \
@@ -50,6 +63,12 @@ ENV SRC_DIR {{ src_dir }}
 RUN mkdir -p ${SRC_DIR}
 WORKDIR ${SRC_DIR}
 
+# -- Extra steps: pre_composer -- #
+{% for step in extra_steps['pre_composer'] -%}
+RUN {{ step }}
+{% endfor %}
+# -- Extra steps: pre_composer -- #
+
 # Install dependencies
 COPY ./composer.* ${SRC_DIR}
 RUN php -d memory_limit=-1 /usr/local/bin/composer global require --prefer-dist hirak/prestissimo && \
@@ -57,11 +76,18 @@ RUN php -d memory_limit=-1 /usr/local/bin/composer global require --prefer-dist 
     rm -rf ~/.composer
 
 {% if enable_xdebug %}
+# Install xdebug
 RUN pecl install xdebug && \
     echo "zend_extension=/usr/local/lib/php/extensions/no-debug-non-zts-20131226/xdebug.so" >> ${PHP_INI} && \
     echo "xdebug.remote_enable=1" >> ${PHP_INI} && \
     echo "xdebug.remote_connect_back=1" >> ${PHP_INI}
 {% endif %}
+
+# -- Extra steps: pre_copy -- #
+{% for step in extra_steps['pre_copy'] -%}
+RUN {{ step }}
+{% endfor %}
+# -- Extra steps: pre_copy -- #
 
 # Copy source code
 COPY . ${SRC_DIR}

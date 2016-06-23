@@ -1,0 +1,9 @@
+[
+    {rabbit,        [
+        {loopback_users, []}
+    ]}{% if tracing %},
+    {rabbitmq_tracing, [
+        {directory, "{{ tracing_directory }}"},
+        {username,  "rabbitmq"}
+    ]}{% endif %}
+].
