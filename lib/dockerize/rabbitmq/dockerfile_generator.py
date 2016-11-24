@@ -8,6 +8,4 @@ def generate(config):
             plugins=sorted(config['plugins']),
             config_file=config['config_file'],
             tracing=config['tracing'],
-            tracing_directory=config['tracing_directory']
-        )
-
+            tracing_directory=config['tracing_directory'])

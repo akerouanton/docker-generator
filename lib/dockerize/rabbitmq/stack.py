@@ -44,8 +44,7 @@ def add_files(files, stack_config):
         files['docker/dev.yml']['rabbitmq'] = {
             'build': 'rabbitmq',
             'dockerfile': 'Dockerfile-dev',
-            'restart': 'on-failure'
-        }
+            'restart': 'on-failure'}
     if stack_config['prod']:
         files['docker/rabbitmq/Dockerfile-prod'] = Dockerfile(version, plugins, 'rabbitmq.prod.config')
         files['docker/rabbitmq/rabbitmq.prod.config'] = ConfigFile()
@@ -54,5 +53,4 @@ def add_files(files, stack_config):
         files['docker/prod.yml']['rabbitmq'] = {
             'build': 'rabbitmq',
             'dockerfile': 'Dockerfile-prod',
-            'restart': 'on-failure'
-        }
+            'restart': 'on-failure'}

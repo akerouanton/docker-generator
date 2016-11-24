@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from json import dump
+from pyaml import safe_dump as dump
 
 class File:
     __metaclass__ = ABCMeta
